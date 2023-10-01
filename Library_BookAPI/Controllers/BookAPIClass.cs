@@ -10,6 +10,7 @@ using Library_BookAPI.Data;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.Extensions.Logging;
+using Library_BookAPI.Logging;
 
 namespace Library_BookAPI.Controllers
 {
@@ -29,13 +30,18 @@ namespace Library_BookAPI.Controllers
     // ControllerBase: provides a set of methods and properties that
     // simplify the implementation of controller actions.
     {
-        private readonly ILogger<BookAPIController> _logger;
+        //private readonly ILogger<BookAPIController> _logger; //SeriLog
         // Constructor that receives an ILogger<BookAPIController> as a dependency
-        public BookAPIController(ILogger<BookAPIController> logger)
+        //public BookAPIController(ILogger<BookAPIController> logger) //SeriLog
+        //public BookAPIController(ILogger<BookAPIController> logger)
+        //{
+        //    _logger = logger; // Assign the provided logger to the private _logger field
+        //}
+        private readonly ILogging _logger;
+        public BookAPIController(ILogging logger)
         {
-            _logger = logger; // Assign the provided logger to the private _logger field
+            _logger = logger;
         }
-
 
 
 
@@ -43,7 +49,8 @@ namespace Library_BookAPI.Controllers
         [HttpGet] // GET endpoint ! RETURNS 1 RECORD
         public ActionResult<IEnumerable<BookDTO>> GetBooks()
         {
-            _logger.LogInformation("Getting all books"); 
+            //_logger.LogInformation("Getting all books"); //SeriLog
+            _logger.Log("Getting all books"," ");
             return Ok(BookStore.bookList);
         }
         
@@ -56,7 +63,8 @@ namespace Library_BookAPI.Controllers
         {
             if(id==0)
             {
-                _logger.LogError("Get Book Error with Id" + id);
+                //_logger.LogError("Get Book Error with Id" + id); //SeriLog
+                _logger.Log("Get Book Error with Id" + id,"error");
                 return BadRequest(); // response status is 400 = BAD REQUEST
             }
             var book = BookStore.bookList.FirstOrDefault(u => u.Id == id);//link operation
