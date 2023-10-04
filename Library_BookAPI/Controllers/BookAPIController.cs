@@ -37,9 +37,10 @@ namespace Library_BookAPI.Controllers
         //    _logger = logger; // Assign the provided logger to the private _logger field
         //}
 
-        public BookAPIController()
+        private readonly ApplicationDbContext _db;
+        public BookAPIController(ApplicationDbContext db)
         {
-
+            _db = db;
         }
 
 
@@ -50,7 +51,7 @@ namespace Library_BookAPI.Controllers
         {
             //_logger.LogInformation("Getting all books"); //SeriLog
 
-            return Ok(BookStore.bookList);
+            return Ok(_db.Books.ToList());
         }
         
         [HttpGet("{id:int}", Name = "GetBook")] // GET endpoint ! RETURNS MULTIPLE RECORD
@@ -66,7 +67,7 @@ namespace Library_BookAPI.Controllers
 
                 return BadRequest(); // response status is 400 = BAD REQUEST
             }
-            var book = BookStore.bookList.FirstOrDefault(u => u.Id == id);//link operation
+            var book = _db.Books.FirstOrDefault(u => u.Id == id);//link operation
             if (book == null)
                 return NotFound(); // response status is 404 = NOT FOUND
 
@@ -84,7 +85,7 @@ namespace Library_BookAPI.Controllers
             //    return BadRequest(ModelState);
             //}
             // how to add custom validation:
-            if (BookStore.bookList.FirstOrDefault(u => u.Title.ToLower() == bookDTO.Title.ToLower()) != null)
+            if (_db.Books.FirstOrDefault(u => u.Title.ToLower() == bookDTO.Title.ToLower()) != null)
             {
                 ModelState.AddModelError("Custom Error", "Book already exists !");
                 return BadRequest(ModelState);
@@ -94,12 +95,26 @@ namespace Library_BookAPI.Controllers
             {
                 return BadRequest(bookDTO);
             }
-            if (bookDTO.Id > 0) // ID less than or equal to zero. When creating the id should be zero
+            if (bookDTO.Id < 0) // ID less than or equal to zero. When creating the id should be zero
             {
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
-            bookDTO.Id = BookStore.bookList.OrderByDescending(u => u.Id).FirstOrDefault().Id + 1; // id gets max value
-            BookStore.bookList.Add(bookDTO); //bookDTO added to List
+            Book model = new()
+            {
+                Title = bookDTO.Title,
+                Author = bookDTO.Author ?? string.Empty,
+                ISBN = bookDTO.ISBN ?? string.Empty,
+                YearPublished = (bookDTO.YearPublished != null) ? (int)bookDTO.YearPublished : 0,
+                Genre = bookDTO.Genre ?? string.Empty,
+                ImageUrl = bookDTO.ImageUrl ?? string.Empty,
+                Publisher = bookDTO.Publisher ?? string.Empty,
+                Language = bookDTO.Language ?? string.Empty,
+                PageCount = (bookDTO.PageCount != null) ? (int)bookDTO.PageCount : 0,
+                Description = bookDTO.Description ?? string.Empty,
+                IsAvailable = bookDTO.IsAvailable
+            };
+            _db.Books.Add(model);
+            _db.SaveChanges();
             return CreatedAtRoute("GetBook", new { id = bookDTO.Id },bookDTO);
         }
         [HttpDelete("{id:int}", Name = "DeleteBook")]
@@ -112,12 +127,13 @@ namespace Library_BookAPI.Controllers
             {
                 return BadRequest();
             }
-            var book = BookStore.bookList.FirstOrDefault(u => u.Id == id);
+            var book = _db.Books.FirstOrDefault(u => u.Id == id);
             if (book == null)  // valid book object is provided in the request body
             {
                 return NotFound();
             }
-            BookStore.bookList.Remove(book);
+            _db.Books.Remove(book);
+            _db.SaveChanges();
             return NoContent();
         }
         [HttpPut("{id:int}", Name = "UpdateBook")]
@@ -129,12 +145,29 @@ namespace Library_BookAPI.Controllers
             {
                 return BadRequest();
             }
-            var book = BookStore.bookList.FirstOrDefault(u => u.Id == id);
-            book.Title = bookDTO.Title;
-            book.Author = bookDTO.Author;
-            book.ISBN = bookDTO.ISBN;
-            book.YearPublished = bookDTO.YearPublished;
-            book.Genre = bookDTO.Genre;
+            Book model = new()
+            {
+                Id = bookDTO.Id,
+                Title = bookDTO.Title,
+                Author = bookDTO.Author ?? string.Empty,
+                ISBN = bookDTO.ISBN ?? string.Empty,
+                YearPublished = (bookDTO.YearPublished != null) ? (int)bookDTO.YearPublished : 0,
+                Genre = bookDTO.Genre ?? string.Empty,
+                ImageUrl = bookDTO.ImageUrl ?? string.Empty,
+                Publisher = bookDTO.Publisher ?? string.Empty,
+                Language = bookDTO.Language ?? string.Empty,
+                PageCount = (bookDTO.PageCount != null) ? (int)bookDTO.PageCount : 0,
+                Description = bookDTO.Description ?? string.Empty,
+                IsAvailable = bookDTO.IsAvailable
+            };
+            _db.Books.Update(model);
+            _db.SaveChanges();
+            //var book = BookStore.bookList.FirstOrDefault(u => u.Id == id);
+            //book.Title = bookDTO.Title;
+            //book.Author = bookDTO.Author;
+            //book.ISBN = bookDTO.ISBN;
+            //book.YearPublished = bookDTO.YearPublished;
+            //book.Genre = bookDTO.Genre;
             return NoContent();
 
 
@@ -149,17 +182,57 @@ namespace Library_BookAPI.Controllers
             {
                 return BadRequest();
             }
-            var book = BookStore.bookList.FirstOrDefault(u => u.Id == id);
+
+            var book = _db.Books.FirstOrDefault(u => u.Id == id);
+
             if (book == null)
             {
-                return BadRequest();
+                return NotFound(); // Return a 404 status if the book with the given ID is not found.
             }
-            patchDTO.ApplyTo(book, ModelState);
-            if (ModelState.IsValid)
+
+            // Create a new BookDTO instance and populate it with the existing book's data.
+            var bookDTO = new BookDTO
+            {
+                Title = book.Title,
+                Author = book.Author ?? string.Empty,
+                ISBN = book.ISBN ?? string.Empty,
+                YearPublished = book.YearPublished,
+                Genre = book.Genre ?? string.Empty,
+                ImageUrl = book.ImageUrl ?? string.Empty,
+                Publisher = book.Publisher ?? string.Empty,
+                Language = book.Language ?? string.Empty,
+                PageCount = book.PageCount,
+                Description = book.Description ?? string.Empty,
+                IsAvailable = book.IsAvailable
+            };
+
+            // Apply the patch operations to the bookDTO.
+            patchDTO.ApplyTo(bookDTO, ModelState);
+
+            // Check if the ModelState is valid after applying the patch.
+            if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+
+            // Update the database with the modified bookDTO data.
+            book.Title = bookDTO.Title;
+            book.Author = bookDTO.Author;
+            book.ISBN = bookDTO.ISBN;
+            book.YearPublished = (int)bookDTO.YearPublished;
+            book.Genre = bookDTO.Genre;
+            book.ImageUrl = bookDTO.ImageUrl;
+            book.Publisher = bookDTO.Publisher;
+            book.Language = bookDTO.Language;
+            book.PageCount = (int)bookDTO.PageCount;
+            book.Description = bookDTO.Description;
+            book.IsAvailable = bookDTO.IsAvailable;
+
+            _db.Books.Update(book);
+            _db.SaveChanges();
+
             return NoContent();
         }
-    }  
+
+    }
 }

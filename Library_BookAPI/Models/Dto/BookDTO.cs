@@ -10,7 +10,7 @@ namespace Library_BookAPI.Models.Dto
         public int Id { get; set; } // Unique identifier for the book
 
         [Required]
-        [MaxLength(40)]
+        [MaxLength(100)]
         public required string Title { get; set; } // Title of the book
 
         public string? Author { get; set; } // Author of the book (nullable)

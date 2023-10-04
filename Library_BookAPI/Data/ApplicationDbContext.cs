@@ -8,13 +8,14 @@ namespace Library_BookAPI.Data
 {
     public class ApplicationDbContext : DbContext
     {
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
 
         }
 
-        public DbSet<Book> Books { get; set; }
+        public DbSet<Book> Books { get; set; } // SET
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -682,7 +683,11 @@ namespace Library_BookAPI.Data
                     Tags = new List<string> { "Non-Fiction", "History" },
                     AverageRating = Math.Round(random.NextDouble() * 5, 1)
                 }
+
                 );
+            base.OnModelCreating(modelBuilder);
         }
+
+
     }
 }
